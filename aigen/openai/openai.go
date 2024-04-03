@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aimsg"
 )
 
 const chatEP = "https://api.openai.com/v1/chat/completions"

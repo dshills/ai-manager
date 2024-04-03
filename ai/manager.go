@@ -1,14 +1,15 @@
 package ai
 
 import (
-	"ai-manager/aigen"
-	"ai-manager/aimsg"
-	"ai-manager/aiserial"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aiserial"
 
 	"github.com/google/uuid"
 )

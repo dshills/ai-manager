@@ -1,8 +1,9 @@
 package aiserial
 
 import (
-	"ai-manager/aimsg"
 	"time"
+
+	"github.com/dshills/ai-manager/aimsg"
 )
 
 /**

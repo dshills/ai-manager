@@ -1,13 +1,14 @@
 package gemini
 
 import (
-	"ai-manager/aimsg"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/dshills/ai-manager/aimsg"
 )
 
 const AIName = "gemini"

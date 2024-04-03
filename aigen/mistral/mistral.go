@@ -1,12 +1,13 @@
 package mistral
 
 import (
-	"ai-manager/aimsg"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/dshills/ai-manager/aimsg"
 )
 
 const mistralEP = "https://api.mistral.ai/v1/chat/completions"

@@ -1,9 +1,9 @@
 package ai
 
 import (
-	"ai-manager/aigen"
-	"ai-manager/aimsg"
-	"ai-manager/aiserial"
+	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aiserial"
 )
 
 const (
