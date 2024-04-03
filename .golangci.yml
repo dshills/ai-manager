@@ -1,0 +1,26 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    - loggercheck
+    - goconst
+    - gofmt
+    - goimports
+    - revive
+  disable:
+    - golint
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+       -  errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: true
