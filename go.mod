@@ -1,4 +1,4 @@
-module ai-manager
+module github.com/dshills/ai-manager
 
 go 1.22.1
 
