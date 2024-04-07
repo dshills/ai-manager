@@ -1,4 +1,4 @@
-package openai
+package ollama
 
 import (
 	"bytes"
@@ -11,45 +11,34 @@ import (
 	"github.com/dshills/ai-manager/aimsg"
 )
 
-const chatEP = "/chat/completions"
+const chatEP = "api/chat"
 
-const AIName = "openai"
-
-const (
-	roleSystem    = "system"
-	roleAssistant = "assistant"
-	roleUser      = "user"
-)
-
-func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
-	frags := []MessageFrag{}
-	for _, m := range conversation {
-		frags = append(frags, MessageFrag{Role: m.Role, Content: m.Text})
+func Generator(model, _, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+	chatReq := ChatRequest{
+		Model: model,
 	}
-	chatReq := CreateRequest{
-		Model:    model,
-		Messages: frags,
-	}
+	chatReq.convConv(conversation)
+
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		return aimsg.Message{}, fmt.Errorf("ollama.Generator: %w", err)
 	}
 
 	// Make the actual API call
-	resp, err := completion(apiKey, baseURL, bytes.NewReader(byts))
+	resp, err := completion(baseURL, bytes.NewReader(byts))
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		return aimsg.Message{}, fmt.Errorf("ollama.Generator: %w", err)
 	}
 
 	msg := aimsg.Message{
 		Role: roleAssistant,
-		Text: resp.Choices[0].Message.Content,
+		Text: resp.Message.Content,
 	}
 
 	return msg, nil
 }
 
-func completion(apiKey, baseURL string, reader io.Reader) (*ChatResp, error) {
+func completion(baseURL string, reader io.Reader) (*ChatResponse, error) {
 	ep, err := url.JoinPath(baseURL, chatEP)
 	if err != nil {
 		return nil, err
@@ -61,7 +50,6 @@ func completion(apiKey, baseURL string, reader io.Reader) (*ChatResp, error) {
 	}
 
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("thread.completion: %w", err)
@@ -72,12 +60,12 @@ func completion(apiKey, baseURL string, reader io.Reader) (*ChatResp, error) {
 		return nil, fmt.Errorf("thread.completion: %v %v", resp.StatusCode, resp.Status)
 	}
 
-	chatResp := ChatResp{}
+	chatResp := ChatResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&chatResp)
 	if err != nil {
 		return nil, fmt.Errorf("thread.completion: %w", err)
 	}
-	if len(chatResp.Choices) == 0 {
+	if len(chatResp.Message.Content) == 0 {
 		return nil, fmt.Errorf("thread.completion: No data returned")
 	}
 

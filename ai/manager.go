@@ -5,36 +5,24 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/dshills/ai-manager/aigen"
-	"github.com/dshills/ai-manager/aimsg"
-	"github.com/dshills/ai-manager/aiserial"
 
 	"github.com/google/uuid"
 )
 
-type aiGenerator struct {
-	AIName    string
-	APIKey    string
-	Generator aigen.Generator
-	Models    []string
-}
-
 type Manager struct {
 	threads       []Thread
 	currentThread Thread
-	generators    map[string]aiGenerator
-	serializer    aiserial.Serializer
-	serSync       sync.Mutex
+	models        map[string]Model
+	m             sync.RWMutex
 }
 
 func (ai *Manager) Models() []string {
+	ai.m.RLock()
+	defer ai.m.RUnlock()
+
 	models := []string{}
-	for _, aig := range ai.generators {
-		for _, model := range aig.Models {
-			models = append(models, fmt.Sprintf("%v: %v", aig.AIName, model))
-		}
+	for _, aig := range ai.models {
+		models = append(models, fmt.Sprintf("%v: %v", aig.AIName, aig.Model))
 	}
 	sort.Strings(models)
 	return models
@@ -52,95 +40,49 @@ func (ai *Manager) RemoveThread(threadID string) error {
 		return fmt.Errorf("RemoveThread: Not found")
 	}
 	ai.threads = append(ai.threads[:idx], ai.threads[idx+1:]...)
-	return ai.Serialize()
-}
-
-func (ai *Manager) Hydrate() error {
-	ai.serSync.Lock()
-	defer ai.serSync.Unlock()
-
-	if ai.serializer == nil {
-		return fmt.Errorf("Hydrate: no defined serializer")
-	}
-
-	sdata, err := ai.serializer.Read()
-	if err != nil {
-		return fmt.Errorf("Hydrate: %w", err)
-	}
-	var errs []string
-
-	for i := range sdata {
-		gen, err := ai.generatorInfo(sdata[i].AIName)
-		if err != nil {
-			errs = append(errs, err.Error())
-			continue
-		}
-		thread := newThread(ai, sdata[i], gen)
-		ai.threads = append(ai.threads, thread)
-	}
-	if len(ai.threads) > 0 && ai.currentThread == nil {
-		ai.currentThread = ai.threads[len(ai.threads)-1]
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("Hydrate: %v", strings.Join(errs, ", "))
-	}
-
 	return nil
 }
 
-func (ai *Manager) Serialize() error {
-	ai.serSync.Lock()
-	defer ai.serSync.Unlock()
-
-	if ai.serializer == nil {
-		return fmt.Errorf("Serialize: no defined serializer")
-	}
-	convs := make([]aiserial.SerialData, len(ai.threads))
-	for _, thread := range ai.threads {
-		convs = append(convs, thread.Info())
-	}
-	if err := ai.serializer.Write(convs); err != nil {
-		return fmt.Errorf("Serialize: %w", err)
-	}
-
-	return nil
-}
-
-func (ai *Manager) Conversations() []aiserial.SerialData {
+func (ai *Manager) Threads() []ThreadData {
 	if len(ai.threads) == 0 {
-		return nil
+		return []ThreadData{}
 	}
-	var convs []aiserial.SerialData
-	for _, thread := range ai.threads {
-		dis := thread.Info()
-		convs = append(convs, dis)
+	convs := make([]ThreadData, len(ai.threads))
+	for i, thread := range ai.threads {
+		convs[i] = thread.Info()
 	}
 	return convs
 }
 
-func (ai *Manager) RegisterGenerator(aiName, apiKey string, models []string, generator aigen.Generator) {
-	ai.generators[strings.ToLower(aiName)] = aiGenerator{AIName: aiName, APIKey: apiKey, Generator: generator, Models: models}
-}
+func (ai *Manager) RegisterGenerator(models ...Model) {
+	ai.m.Lock()
+	defer ai.m.Unlock()
 
-func (ai *Manager) generatorInfo(aiName string) (aiGenerator, error) {
-	aig, ok := ai.generators[strings.ToLower(aiName)]
-	if !ok {
-		return aiGenerator{}, fmt.Errorf("%v Generator not found", aiName)
+	for _, mod := range models {
+		key := fmt.Sprintf("%v:%v", strings.ToLower(mod.AIName), strings.ToLower(mod.Model))
+		ai.models[key] = mod
 	}
-	return aig, nil
 }
 
-func (ai *Manager) NewThread(aiName, model string, meta ...aimsg.Meta) error {
-	gen, err := ai.generatorInfo(aiName)
+func (ai *Manager) generatorInfo(aiName, model string) (*Model, error) {
+	ai.m.RLock()
+	defer ai.m.RUnlock()
+
+	key := fmt.Sprintf("%v:%v", strings.ToLower(aiName), strings.ToLower(model))
+	mod, ok := ai.models[key]
+	if !ok {
+		return nil, fmt.Errorf("%v %v Generator not found", aiName, model)
+	}
+	return &mod, nil
+}
+
+func (ai *Manager) NewThread(info ThreadData) error {
+	gen, err := ai.generatorInfo(info.AIName, info.Model)
 	if err != nil {
 		return err
 	}
-	info := aiserial.SerialData{
-		ID:        uuid.New().String(),
-		AIName:    aiName,
-		Model:     model,
-		CreatedAt: time.Now(),
-		MetaData:  meta,
+	if info.ID == "" {
+		info.ID = uuid.New().String()
 	}
 	thread := newThread(ai, info, gen)
 	ai.threads = append(ai.threads, thread)
@@ -163,10 +105,7 @@ func (ai *Manager) CurrentThread() Thread {
 	return ai.currentThread
 }
 
-func New(serializer aiserial.Serializer) *Manager {
-	aigen := Manager{
-		generators: make(map[string]aiGenerator),
-		serializer: serializer,
-	}
+func New() *Manager {
+	aigen := Manager{models: make(map[string]Model)}
 	return &aigen
 }

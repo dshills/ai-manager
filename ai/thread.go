@@ -3,7 +3,6 @@ package ai
 import (
 	"github.com/dshills/ai-manager/aigen"
 	"github.com/dshills/ai-manager/aimsg"
-	"github.com/dshills/ai-manager/aiserial"
 )
 
 const (
@@ -16,15 +15,16 @@ const (
 type Thread interface {
 	ID() string
 	Conversation() aimsg.Conversation
-	Info() aiserial.SerialData
+	Info() ThreadData
 	Generate(out chan<- string, query string)
 }
 
 type _thread struct {
-	info      aiserial.SerialData
+	info      ThreadData
 	generator aigen.Generator
 	apiKey    string
 	mgr       *Manager
+	baseURL   string
 }
 
 func (t *_thread) ID() string {
@@ -35,7 +35,7 @@ func (t *_thread) Conversation() aimsg.Conversation {
 	return t.info.Conversation
 }
 
-func (t *_thread) Info() aiserial.SerialData {
+func (t *_thread) Info() ThreadData {
 	return t.info
 }
 
@@ -46,7 +46,7 @@ func (t *_thread) updateConv(msg aimsg.Message) {
 func (t *_thread) Generate(out chan<- string, query string) {
 	msg := aimsg.Message{Role: "user", Text: query}
 	t.updateConv(msg)
-	resp, err := t.generator(t.info.Model, t.apiKey, t.info.Conversation, t.info.MetaData...)
+	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
 	if err != nil {
 		out <- ErrorStart
 		out <- err.Error()
@@ -59,6 +59,6 @@ func (t *_thread) Generate(out chan<- string, query string) {
 	out <- ResponseComplete
 }
 
-func newThread(mgr *Manager, info aiserial.SerialData, gen aiGenerator) Thread {
-	return &_thread{mgr: mgr, info: info, generator: gen.Generator, apiKey: gen.APIKey}
+func newThread(mgr *Manager, info ThreadData, mod *Model) Thread {
+	return &_thread{mgr: mgr, info: info, generator: mod.Generator, apiKey: mod.APIKey, baseURL: mod.BaseURL}
 }

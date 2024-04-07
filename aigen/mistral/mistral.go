@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/dshills/ai-manager/aimsg"
 )
 
-const mistralEP = "https://api.mistral.ai/v1/chat/completions"
+const chatEP = "/chat/completions"
 
 const AIName = "mistral"
 
-func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
 	messages := []Message{}
 	for _, m := range conversation {
 		msg := Message{Role: m.Role, Content: m.Text}
@@ -32,7 +33,7 @@ func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg
 		return aimsg.Message{}, fmt.Errorf("mistral.Generator: %w", err)
 	}
 
-	resp, err := completion(apiKey, bytes.NewReader(body))
+	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
 		return aimsg.Message{}, fmt.Errorf("mistral.Generator: %w", err)
 	}
@@ -44,9 +45,13 @@ func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg
 	return msg, nil
 }
 
-func completion(apiKey string, reader io.Reader) (*Response, error) {
+func completion(apiKey, baseURL string, reader io.Reader) (*Response, error) {
+	ep, err := url.JoinPath(baseURL, chatEP)
+	if err != nil {
+		return nil, err
+	}
 	client := http.Client{}
-	req, err := http.NewRequest(http.MethodPost, mistralEP, reader)
+	req, err := http.NewRequest(http.MethodPost, ep, reader)
 	if err != nil {
 		return nil, fmt.Errorf("completion: %w", err)
 	}

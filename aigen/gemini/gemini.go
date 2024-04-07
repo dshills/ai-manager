@@ -14,11 +14,10 @@ import (
 const AIName = "gemini"
 
 const (
-	baseURL  = "https://generativelanguage.googleapis.com/v1beta"
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}
@@ -30,7 +29,7 @@ func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg
 		return aimsg.Message{}, fmt.Errorf("gemini.Generator: %w", err)
 	}
 
-	resp, err := completion(model, apiKey, bytes.NewReader(body))
+	resp, err := completion(model, apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
 		return aimsg.Message{}, fmt.Errorf("gemini.Generator: %w", err)
 	}
@@ -42,7 +41,7 @@ func Generator(model, apiKey string, conversation aimsg.Conversation, _ ...aimsg
 	return msg, nil
 }
 
-func completion(model, apiKey string, reader io.Reader) (*Response, error) {
+func completion(model, apiKey, baseURL string, reader io.Reader) (*Response, error) {
 	ep := fmt.Sprintf("%v%v", baseURL, geminiEP)
 	ep = strings.Replace(ep, "%%MODEL%%", model, 1)
 	ep = strings.Replace(ep, "%%APIKEY%%", apiKey, 1)
