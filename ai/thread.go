@@ -46,6 +46,7 @@ func (t *_thread) updateConv(msg aimsg.Message) {
 func (t *_thread) Generate(out chan<- string, query string) {
 	msg := aimsg.Message{Role: "user", Text: query}
 	t.updateConv(msg)
+
 	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
 	if err != nil {
 		out <- ErrorStart
