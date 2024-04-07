@@ -54,7 +54,7 @@ func (ai *Manager) Threads() []ThreadData {
 	return convs
 }
 
-func (ai *Manager) RegisterGenerator(models ...Model) {
+func (ai *Manager) RegisterGenerators(models ...Model) {
 	ai.m.Lock()
 	defer ai.m.Unlock()
 

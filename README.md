@@ -8,48 +8,56 @@ Interact with all the modern AIs
 package main
 
 import (
-	"ai-manager/ai"
-	"ai-manager/aigen/gemini"
-	"ai-manager/aigen/mistral"
-	"ai-manager/aigen/openai"
-	"ai-manager/aiserial"
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
+
+	"github.com/dshills/ai-manager/ai"
+	"github.com/dshills/ai-manager/aigen/gemini"
+	"github.com/dshills/ai-manager/aigen/openai"
 )
 
 const (
-	serialPath = ".ai-manager"
-	openAIKey  = "<YOUR OpenAI API Key>"
-	geminiKey  = "<YOUR Gemini API Key>"
-	mistralKey = "<YOUR Mistral API Key>"
+	openaiName    = "OpenAI"
+	openaiKey     = "<YOUR OpenAI API Key>"
+	gpt4          = "gpt-4"
+	gpt35turbo    = "gpt-3.5-turbo"
+	openaiBaseURL = "https://api.openai.com/v1"
+)
+const (
+	geminiName    = "Gemini"
+	geminiKey     = "<YOUR Gemini API Key>"
+	gemini1pro    = "gemini-1.0-pro"
+	geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta"
 )
 
-var openAIModels = []string{"gpt-4", "gpt-3.5-turbo", "gpt-4-turbo-preview"}
-var geminiModels = []string{"gemini-pro", "gemini-1.0-pro-latest", "gemini-1.0-pro"}
-var mistralModels = []string{"mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"}
-
 func main() {
-	home := os.Getenv("HOME")
-	path := filepath.Join(home, serialPath)
-	var err error
-	path, err = filepath.Abs(path)
-	if err != nil {
-		log.Printf("[FATAL] %v", err)
+	// Create the manager
+	aimgr := ai.New()
+
+	// Models we want to use
+	models := []ai.Model{
+		{AIName: openaiName, Model: gpt4, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.Generator},
+		{AIName: openaiName, Model: gpt35turbo, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.Generator},
+		{AIName: geminiName, Model: gemini1pro, APIKey: geminiKey, BaseURL: geminiBaseURL, Generator: gemini.Generator},
+	}
+
+	// Register the models
+	aimgr.RegisterGenerators(models...)
+
+	thread := ai.ThreadData{
+		AIName: openaiName,
+		Model:  gpt4,
+	}
+	// Create a thread to converse with
+	if err := aimgr.NewThread(thread); err != nil {
+		fmt.Println(err)
 		os.Exit(1)
 	}
-	serializer := aiserial.New(path)
-	aimgr := ai.New(serializer)
 
-	aimgr.RegisterGenerator(openai.AIName, openAIKey, openAIModels, openai.Generator)
-	aimgr.RegisterGenerator(gemini.AIName, geminiKey, geminiModels, gemini.Generator)
-	aimgr.RegisterGenerator(mistral.AIName, mistralKey, mistralModels, mistral.Generator)
-
-	aimgr.NewThread(openai.AIName, "gpt-3.5-turbo")
-
+	// Create a channel to receive data
 	output := make(chan string)
 
+	// Start chatting
 	go aimgr.CurrentThread().Generate(output, "Write a story about a superhero cat named Bitty")
 
 	for {
@@ -68,6 +76,5 @@ func main() {
 		}
 		fmt.Println(msg)
 	}
-
 }
 ```
