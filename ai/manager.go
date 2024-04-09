@@ -2,7 +2,6 @@ package ai
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 
@@ -14,18 +13,41 @@ type Manager struct {
 	currentThread Thread
 	models        map[string]Model
 	m             sync.RWMutex
+	modelNames    []string
 }
 
-func (ai *Manager) Models() []string {
-	ai.m.RLock()
-	defer ai.m.RUnlock()
+func New() *Manager {
+	aigen := Manager{models: make(map[string]Model)}
+	return &aigen
+}
 
-	models := []string{}
-	for _, aig := range ai.models {
-		models = append(models, fmt.Sprintf("%v: %v", aig.AIName, aig.Model))
+func (ai *Manager) NewThread(info ThreadData) (Thread, error) {
+	gen, err := ai.generatorInfo(info.AIName, info.Model)
+	if err != nil {
+		return nil, err
 	}
-	sort.Strings(models)
-	return models
+	if info.ID == "" {
+		info.ID = uuid.New().String()
+	}
+	thread := newThread(ai, info, gen)
+	ai.threads = append(ai.threads, thread)
+	ai.currentThread = thread
+
+	return thread, nil
+}
+
+func (ai *Manager) SwitchThread(threadID string) (Thread, error) {
+	for i := range ai.threads {
+		if ai.threads[i].ID() == threadID {
+			ai.currentThread = ai.threads[i]
+			return ai.threads[i], nil
+		}
+	}
+	return nil, fmt.Errorf("SwitchThread: thread not found")
+}
+
+func (ai *Manager) CurrentThread() Thread {
+	return ai.currentThread
 }
 
 func (ai *Manager) RemoveThread(threadID string) error {
@@ -54,14 +76,27 @@ func (ai *Manager) Threads() []ThreadData {
 	return convs
 }
 
-func (ai *Manager) RegisterGenerators(models ...Model) {
+func (ai *Manager) RegisterGenerators(models ...Model) error {
 	ai.m.Lock()
 	defer ai.m.Unlock()
 
 	for _, mod := range models {
+		if err := mod.Validate(); err != nil {
+			return err
+		}
 		key := fmt.Sprintf("%v:%v", strings.ToLower(mod.AIName), strings.ToLower(mod.Model))
 		ai.models[key] = mod
 	}
+	names := []string{}
+	for key := range ai.models {
+		names = append(names, key)
+	}
+	ai.modelNames = names
+	return nil
+}
+
+func (ai *Manager) Models() []string {
+	return ai.modelNames
 }
 
 func (ai *Manager) generatorInfo(aiName, model string) (*Model, error) {
@@ -74,38 +109,4 @@ func (ai *Manager) generatorInfo(aiName, model string) (*Model, error) {
 		return nil, fmt.Errorf("%v %v Generator not found", aiName, model)
 	}
 	return &mod, nil
-}
-
-func (ai *Manager) NewThread(info ThreadData) error {
-	gen, err := ai.generatorInfo(info.AIName, info.Model)
-	if err != nil {
-		return err
-	}
-	if info.ID == "" {
-		info.ID = uuid.New().String()
-	}
-	thread := newThread(ai, info, gen)
-	ai.threads = append(ai.threads, thread)
-	ai.currentThread = thread
-
-	return nil
-}
-
-func (ai *Manager) SwitchThread(threadID string) error {
-	for i := range ai.threads {
-		if ai.threads[i].ID() == threadID {
-			ai.currentThread = ai.threads[i]
-			return nil
-		}
-	}
-	return fmt.Errorf("SwitchThread: thread not found")
-}
-
-func (ai *Manager) CurrentThread() Thread {
-	return ai.currentThread
-}
-
-func New() *Manager {
-	aigen := Manager{models: make(map[string]Model)}
-	return &aigen
 }
