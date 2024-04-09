@@ -17,7 +17,7 @@ const (
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}
@@ -26,19 +26,24 @@ func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _
 	req := Request{Contents: conlist}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("gemini.Generator: %w", err)
+		err = fmt.Errorf("gemini.Generator: %w", err)
+		return
 	}
 
 	resp, err := completion(model, apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("gemini.Generator: %w", err)
+		err = fmt.Errorf("gemini.Generator: %w", err)
+		return
 	}
 
-	msg := aigen.Message{
-		Role: resp.Candidates[0].Content.Role,
-		Text: resp.Candidates[0].Content.Parts[0].Text,
+	for _, can := range resp.Candidates {
+		usage.TotalTokens += int64(can.TokenCount)
 	}
-	return msg, nil
+
+	msg.Role = resp.Candidates[0].Content.Role
+	msg.Text = resp.Candidates[0].Content.Parts[0].Text
+
+	return msg, usage, nil
 }
 
 func completion(model, apiKey, baseURL string, reader io.Reader) (*Response, error) {

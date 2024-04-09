@@ -21,4 +21,10 @@ type Message struct {
 	Text string
 }
 
-type Generator func(model, apikey, baseURL string, conversation Conversation, meta ...Meta) (Message, error)
+type Usage struct {
+	CompletionTokens int64
+	PromptTokens     int64
+	TotalTokens      int64
+}
+
+type Generator func(model, apikey, baseURL string, conversation Conversation, meta ...Meta) (Message, Usage, error)

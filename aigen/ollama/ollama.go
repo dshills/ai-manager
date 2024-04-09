@@ -13,7 +13,7 @@ import (
 
 const chatEP = "api/chat"
 
-func Generator(model, _, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
+func Generator(model, _, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
 	chatReq := ChatRequest{
 		Model: model,
 	}
@@ -21,21 +21,25 @@ func Generator(model, _, baseURL string, conversation aigen.Conversation, _ ...a
 
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("ollama.Generator: %w", err)
+		err = fmt.Errorf("ollama.Generator: %w", err)
+		return
 	}
 
 	// Make the actual API call
 	resp, err := completion(baseURL, bytes.NewReader(byts))
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("ollama.Generator: %w", err)
+		err = fmt.Errorf("ollama.Generator: %w", err)
+		return
 	}
 
-	msg := aigen.Message{
-		Role: roleAssistant,
-		Text: resp.Message.Content,
-	}
+	usage.PromptTokens = int64(resp.PromptEvalCount)
+	usage.CompletionTokens = int64(resp.EvalCount)
+	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 
-	return msg, nil
+	msg.Role = roleAssistant
+	msg.Text = resp.Message.Content
+
+	return
 }
 
 func completion(baseURL string, reader io.Reader) (*ChatResponse, error) {

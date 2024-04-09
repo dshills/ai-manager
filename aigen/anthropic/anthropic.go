@@ -18,25 +18,28 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
 	aireq := Request{Model: model}
 	aireq.fillMsgs(conversation)
 
 	body, err := json.Marshal(&aireq)
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
+		err = fmt.Errorf("anthropic.Generator: %w", err)
+		return
 	}
 
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
+		err = fmt.Errorf("anthropic.Generator: %w", err)
+		return
 	}
 
-	msg := aigen.Message{
-		Role: roleAssistant,
-		Text: resp.Content[0].Text,
-	}
-	return msg, nil
+	usage.PromptTokens = int64(resp.Usage.InputTokens)
+	usage.CompletionTokens = int64(resp.Usage.OutputTokens)
+	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+	msg.Role = roleAssistant
+	msg.Text = resp.Content[0].Text
+	return msg, usage, nil
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*Response, error) {

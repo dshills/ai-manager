@@ -15,7 +15,7 @@ const chatEP = "/chat/completions"
 
 const AIName = "mistral"
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
 	messages := []Message{}
 	for _, m := range conversation {
 		msg := Message{Role: m.Role, Content: m.Text}
@@ -30,19 +30,22 @@ func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _
 	}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("mistral.Generator: %w", err)
+		err = fmt.Errorf("mistral.Generator: %w", err)
+		return
 	}
 
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("mistral.Generator: %w", err)
+		err = fmt.Errorf("mistral.Generator: %w", err)
+		return
 	}
+	usage.PromptTokens = int64(resp.Usage.PromptTokens)
+	usage.CompletionTokens = int64(resp.Usage.CompletionTokens)
+	usage.TotalTokens = int64(resp.Usage.TotalTokens)
 
-	msg := aigen.Message{
-		Role: resp.Choices[0].Message.Role,
-		Text: resp.Choices[0].Message.Content,
-	}
-	return msg, nil
+	msg.Role = resp.Choices[0].Message.Role
+	msg.Text = resp.Choices[0].Message.Content
+	return
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*Response, error) {

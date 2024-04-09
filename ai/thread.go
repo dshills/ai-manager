@@ -43,11 +43,18 @@ func (t *_thread) updateConv(msg aigen.Message) {
 	t.info.Conversation = append(t.info.Conversation, msg)
 }
 
+func (t *_thread) updateUsage(usage aigen.Usage) {
+	t.info.PromptTokens += usage.PromptTokens
+	t.info.CompletionTokens += usage.CompletionTokens
+	t.info.TotalTokens += usage.TotalTokens
+}
+
 func (t *_thread) Generate(out chan<- string, query string) {
 	msg := aigen.Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
-	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	t.updateUsage(usage) // Even if error we may have had usage tokens
 	if err != nil {
 		out <- ErrorStart
 		out <- err.Error()
@@ -64,7 +71,8 @@ func (t *_thread) Converse(query string) (string, error) {
 	msg := aigen.Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
-	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	t.updateUsage(usage) // Even if error we may have had usage tokens
 	if err != nil {
 		return "", err
 	}

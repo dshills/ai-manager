@@ -21,7 +21,7 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
 	frags := []MessageFrag{}
 	for _, m := range conversation {
 		frags = append(frags, MessageFrag{Role: m.Role, Content: m.Text})
@@ -32,21 +32,25 @@ func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _
 	}
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		err = fmt.Errorf("openai.Generator: %w", err)
+		return
 	}
 
 	// Make the actual API call
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(byts))
 	if err != nil {
-		return aigen.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		err = fmt.Errorf("openai.Generator: %w", err)
+		return
 	}
 
-	msg := aigen.Message{
-		Role: roleAssistant,
-		Text: resp.Choices[0].Message.Content,
-	}
+	usage.PromptTokens = resp.Usage.PromptTokens
+	usage.CompletionTokens = resp.Usage.CompletionTokens
+	usage.TotalTokens = resp.Usage.TotalTokens
 
-	return msg, nil
+	msg.Role = roleAssistant
+	msg.Text = resp.Choices[0].Message.Content
+
+	return
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*ChatResp, error) {
