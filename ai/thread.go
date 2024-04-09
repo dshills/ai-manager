@@ -17,6 +17,7 @@ type Thread interface {
 	Conversation() aimsg.Conversation
 	Info() ThreadData
 	Generate(out chan<- string, query string)
+	Converse(query string) (string, error)
 }
 
 type _thread struct {
@@ -58,6 +59,18 @@ func (t *_thread) Generate(out chan<- string, query string) {
 	out <- ResponseStart
 	out <- resp.Text
 	out <- ResponseComplete
+}
+
+func (t *_thread) Converse(query string) (string, error) {
+	msg := aimsg.Message{Role: "user", Text: query}
+	t.updateConv(msg)
+
+	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	if err != nil {
+		return "", err
+	}
+	t.updateConv(resp)
+	return resp.Text, nil
 }
 
 func newThread(mgr *Manager, info ThreadData, mod *Model) Thread {
