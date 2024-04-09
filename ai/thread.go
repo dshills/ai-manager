@@ -2,7 +2,6 @@ package ai
 
 import (
 	"github.com/dshills/ai-manager/aigen"
-	"github.com/dshills/ai-manager/aimsg"
 )
 
 const (
@@ -14,7 +13,7 @@ const (
 
 type Thread interface {
 	ID() string
-	Conversation() aimsg.Conversation
+	Conversation() aigen.Conversation
 	Info() ThreadData
 	Generate(out chan<- string, query string)
 	Converse(query string) (string, error)
@@ -32,7 +31,7 @@ func (t *_thread) ID() string {
 	return t.info.ID
 }
 
-func (t *_thread) Conversation() aimsg.Conversation {
+func (t *_thread) Conversation() aigen.Conversation {
 	return t.info.Conversation
 }
 
@@ -40,12 +39,12 @@ func (t *_thread) Info() ThreadData {
 	return t.info
 }
 
-func (t *_thread) updateConv(msg aimsg.Message) {
+func (t *_thread) updateConv(msg aigen.Message) {
 	t.info.Conversation = append(t.info.Conversation, msg)
 }
 
 func (t *_thread) Generate(out chan<- string, query string) {
-	msg := aimsg.Message{Role: "user", Text: query}
+	msg := aigen.Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
 	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
@@ -62,7 +61,7 @@ func (t *_thread) Generate(out chan<- string, query string) {
 }
 
 func (t *_thread) Converse(query string) (string, error) {
-	msg := aimsg.Message{Role: "user", Text: query}
+	msg := aigen.Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
 	resp, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)

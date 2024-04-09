@@ -8,14 +8,14 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aigen"
 )
 
 const chatEP = "/chat/completions"
 
 const AIName = "mistral"
 
-func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
 	messages := []Message{}
 	for _, m := range conversation {
 		msg := Message{Role: m.Role, Content: m.Text}
@@ -30,15 +30,15 @@ func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _
 	}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("mistral.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("mistral.Generator: %w", err)
 	}
 
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("mistral.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("mistral.Generator: %w", err)
 	}
 
-	msg := aimsg.Message{
+	msg := aigen.Message{
 		Role: resp.Choices[0].Message.Role,
 		Text: resp.Choices[0].Message.Content,
 	}

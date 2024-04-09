@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dshills/ai-manager/aigen"
-	"github.com/dshills/ai-manager/aimsg"
 )
 
 type Model struct {
@@ -38,10 +37,13 @@ func (m Model) Validate() error {
 }
 
 type ThreadData struct {
-	ID           string
-	AIName       string
-	Model        string
-	CreatedAt    time.Time
-	Conversation aimsg.Conversation
-	MetaData     []aimsg.Meta
+	ID               string
+	AIName           string
+	Model            string
+	CreatedAt        time.Time
+	Conversation     aigen.Conversation
+	MetaData         []aigen.Meta
+	CompletionTokens int64
+	PromptTokens     int64
+	TotalTokens      int64
 }

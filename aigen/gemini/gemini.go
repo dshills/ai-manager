@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aigen"
 )
 
 const AIName = "gemini"
@@ -17,7 +17,7 @@ const (
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}
@@ -26,15 +26,15 @@ func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _
 	req := Request{Contents: conlist}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("gemini.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("gemini.Generator: %w", err)
 	}
 
 	resp, err := completion(model, apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("gemini.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("gemini.Generator: %w", err)
 	}
 
-	msg := aimsg.Message{
+	msg := aigen.Message{
 		Role: resp.Candidates[0].Content.Role,
 		Text: resp.Candidates[0].Content.Parts[0].Text,
 	}

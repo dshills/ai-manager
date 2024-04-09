@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aigen"
 )
 
 const chatEP = "/chat/completions"
@@ -21,7 +21,7 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
 	frags := []MessageFrag{}
 	for _, m := range conversation {
 		frags = append(frags, MessageFrag{Role: m.Role, Content: m.Text})
@@ -32,16 +32,16 @@ func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _
 	}
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("openai.Generator: %w", err)
 	}
 
 	// Make the actual API call
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(byts))
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("openai.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("openai.Generator: %w", err)
 	}
 
-	msg := aimsg.Message{
+	msg := aigen.Message{
 		Role: roleAssistant,
 		Text: resp.Choices[0].Message.Content,
 	}

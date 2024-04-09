@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/dshills/ai-manager/aimsg"
+	"github.com/dshills/ai-manager/aigen"
 )
 
 const ep = "/messages"
@@ -18,21 +18,21 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aimsg.Conversation, _ ...aimsg.Meta) (aimsg.Message, error) {
+func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (aigen.Message, error) {
 	aireq := Request{Model: model}
 	aireq.fillMsgs(conversation)
 
 	body, err := json.Marshal(&aireq)
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
 	}
 
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		return aimsg.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
+		return aigen.Message{}, fmt.Errorf("anthropic.Generator: %w", err)
 	}
 
-	msg := aimsg.Message{
+	msg := aigen.Message{
 		Role: roleAssistant,
 		Text: resp.Content[0].Text,
 	}
