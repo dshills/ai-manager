@@ -2,6 +2,24 @@
 
 Interact with all the modern AIs
 
+## Supported Models
+
+Anthropic: claude-3-haiku-20240307
+Anthropic: claude-3-opus-20240229
+Anthropic: claude-3-sonnet-20240229
+Gemini: gemini-1.0-pro
+Gemini: gemini-1.0-pro-latest
+Gemini: gemini-pro
+Mistral: mistral-large-latest
+Mistral: mistral-medium-latest
+Mistral: mistral-small-latest
+Ollama: Any
+OpenAI: gpt-3.5-turbo
+OpenAI: gpt-4
+OpenAI: gpt-4-turbo-preview
+
+Others can be added by writing to the Generator interface.
+
 ## Example Usage
 
 ```go
