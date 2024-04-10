@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/dshills/ai-manager/ai"
 )
@@ -21,7 +22,13 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
+type Generator struct{}
+
+func New() ai.Generator {
+	return &Generator{}
+}
+
+func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
 	frags := []MessageFrag{}
 	for _, m := range conversation {
 		frags = append(frags, MessageFrag{Role: m.Role, Content: m.Text})
@@ -32,25 +39,25 @@ func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ..
 	}
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		err = fmt.Errorf("openai.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("openai.Generator: %w", err)
 	}
 
-	// Make the actual API call
+	response := ai.GeneratorResponse{}
+
+	start := time.Now()
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(byts))
 	if err != nil {
-		err = fmt.Errorf("openai.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("openai.Generator: %w", err)
 	}
 
-	usage.PromptTokens = resp.Usage.PromptTokens
-	usage.CompletionTokens = resp.Usage.CompletionTokens
-	usage.TotalTokens = resp.Usage.TotalTokens
+	response.Elapsed = time.Since(start)
+	response.Usage.PromptTokens = resp.Usage.PromptTokens
+	response.Usage.CompletionTokens = resp.Usage.CompletionTokens
+	response.Usage.TotalTokens = resp.Usage.TotalTokens
+	response.Message.Role = roleAssistant
+	response.Message.Text = resp.Choices[0].Message.Content
 
-	msg.Role = roleAssistant
-	msg.Text = resp.Choices[0].Message.Content
-
-	return
+	return &response, nil
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*ChatResp, error) {

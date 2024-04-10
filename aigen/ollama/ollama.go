@@ -7,13 +7,20 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/dshills/ai-manager/ai"
 )
 
 const chatEP = "api/chat"
 
-func Generator(model, _, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
+type Generator struct{}
+
+func New() ai.Generator {
+	return &Generator{}
+}
+
+func (g *Generator) Generate(model, _, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
 	chatReq := ChatRequest{
 		Model: model,
 	}
@@ -21,25 +28,25 @@ func Generator(model, _, baseURL string, conversation ai.Conversation, _ ...ai.M
 
 	byts, err := json.MarshalIndent(&chatReq, "", "\t")
 	if err != nil {
-		err = fmt.Errorf("ollama.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("ollama.Generator: %w", err)
 	}
 
-	// Make the actual API call
+	response := ai.GeneratorResponse{}
+
+	start := time.Now()
 	resp, err := completion(baseURL, bytes.NewReader(byts))
 	if err != nil {
-		err = fmt.Errorf("ollama.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("ollama.Generator: %w", err)
 	}
 
-	usage.PromptTokens = int64(resp.PromptEvalCount)
-	usage.CompletionTokens = int64(resp.EvalCount)
-	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+	response.Elapsed = time.Since(start)
+	response.Usage.PromptTokens = int64(resp.PromptEvalCount)
+	response.Usage.CompletionTokens = int64(resp.EvalCount)
+	response.Usage.TotalTokens = response.Usage.PromptTokens + response.Usage.CompletionTokens
+	response.Message.Role = roleAssistant
+	response.Message.Text = resp.Message.Content
 
-	msg.Role = roleAssistant
-	msg.Text = resp.Message.Content
-
-	return
+	return &response, nil
 }
 
 func completion(baseURL string, reader io.Reader) (*ChatResponse, error) {

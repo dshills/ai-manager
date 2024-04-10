@@ -3,7 +3,6 @@ package ai
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 type Model struct {
@@ -32,16 +31,4 @@ func (m Model) Validate() error {
 		return fmt.Errorf("%v", strings.Join(errs, ", "))
 	}
 	return nil
-}
-
-type ThreadData struct {
-	ID               string
-	AIName           string
-	Model            string
-	CreatedAt        time.Time
-	Conversation     Conversation
-	MetaData         []Meta
-	CompletionTokens int64
-	PromptTokens     int64
-	TotalTokens      int64
 }

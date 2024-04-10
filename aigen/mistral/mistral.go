@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/dshills/ai-manager/ai"
 )
@@ -15,7 +16,13 @@ const chatEP = "/chat/completions"
 
 const AIName = "mistral"
 
-func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
+type Generator struct{}
+
+func New() ai.Generator {
+	return &Generator{}
+}
+
+func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
 	messages := []Message{}
 	for _, m := range conversation {
 		msg := Message{Role: m.Role, Content: m.Text}
@@ -30,22 +37,25 @@ func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ..
 	}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		err = fmt.Errorf("mistral.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("mistral.Generator: %w", err)
 	}
 
+	response := ai.GeneratorResponse{}
+
+	start := time.Now()
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		err = fmt.Errorf("mistral.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("mistral.Generator: %w", err)
 	}
-	usage.PromptTokens = int64(resp.Usage.PromptTokens)
-	usage.CompletionTokens = int64(resp.Usage.CompletionTokens)
-	usage.TotalTokens = int64(resp.Usage.TotalTokens)
 
-	msg.Role = resp.Choices[0].Message.Role
-	msg.Text = resp.Choices[0].Message.Content
-	return
+	response.Elapsed = time.Since(start)
+	response.Usage.PromptTokens = int64(resp.Usage.PromptTokens)
+	response.Usage.CompletionTokens = int64(resp.Usage.CompletionTokens)
+	response.Usage.TotalTokens = int64(resp.Usage.TotalTokens)
+	response.Message.Role = resp.Choices[0].Message.Role
+	response.Message.Text = resp.Choices[0].Message.Content
+
+	return &response, nil
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*Response, error) {

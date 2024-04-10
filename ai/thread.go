@@ -1,26 +1,32 @@
 package ai
 
-const (
-	ResponseStart    = "--- RESPONSE START ---"
-	ResponseComplete = "--- RESPONSE COMPLETE ---"
-	ErrorStart       = "--- ERROR START ---"
-	ErrorComplete    = "--- ERROR COMPLETE ---"
-)
+import "time"
+
+type ThreadData struct {
+	ID               string
+	AIName           string
+	Model            string
+	CreatedAt        time.Time
+	Conversation     Conversation
+	MetaData         []Meta
+	CompletionTokens int64
+	PromptTokens     int64
+	TotalTokens      int64
+}
 
 type Thread interface {
 	ID() string
 	Conversation() Conversation
 	Info() ThreadData
-	Generate(out chan<- string, query string)
-	Converse(query string) (string, error)
+	Converse(query string) (*GeneratorResponse, error)
 }
 
 type _thread struct {
-	info      ThreadData
-	generator Generator
-	apiKey    string
-	mgr       *Manager
-	baseURL   string
+	info    ThreadData
+	gen     Generator
+	apiKey  string
+	mgr     *Manager
+	baseURL string
 }
 
 func (t *_thread) ID() string {
@@ -45,37 +51,19 @@ func (t *_thread) updateUsage(usage Usage) {
 	t.info.TotalTokens += usage.TotalTokens
 }
 
-func (t *_thread) Generate(out chan<- string, query string) {
+func (t *_thread) Converse(query string) (*GeneratorResponse, error) {
 	msg := Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
-	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
-	t.updateUsage(usage) // Even if error we may have had usage tokens
+	resp, err := t.gen.Generate(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
 	if err != nil {
-		out <- ErrorStart
-		out <- err.Error()
-		out <- ErrorComplete
-		return
+		return nil, err
 	}
-	t.updateConv(resp)
-	out <- ResponseStart
-	out <- resp.Text
-	out <- ResponseComplete
-}
-
-func (t *_thread) Converse(query string) (string, error) {
-	msg := Message{Role: "user", Text: query}
-	t.updateConv(msg)
-
-	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
-	t.updateUsage(usage) // Even if error we may have had usage tokens
-	if err != nil {
-		return "", err
-	}
-	t.updateConv(resp)
-	return resp.Text, nil
+	t.updateUsage(resp.Usage)
+	t.updateConv(resp.Message)
+	return resp, nil
 }
 
 func newThread(mgr *Manager, info ThreadData, mod *Model) Thread {
-	return &_thread{mgr: mgr, info: info, generator: mod.Generator, apiKey: mod.APIKey, baseURL: mod.BaseURL}
+	return &_thread{mgr: mgr, info: info, gen: mod.Generator, apiKey: mod.APIKey, baseURL: mod.BaseURL}
 }

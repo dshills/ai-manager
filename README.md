@@ -36,45 +36,39 @@ func main() {
 
 	// Models we want to use
 	models := []ai.Model{
-		{AIName: openaiName, Model: gpt4, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.Generator},
-		{AIName: openaiName, Model: gpt35turbo, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.Generator},
-		{AIName: geminiName, Model: gemini1pro, APIKey: geminiKey, BaseURL: geminiBaseURL, Generator: gemini.Generator},
+		{AIName: openaiName, Model: gpt4, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.New()},
+		{AIName: openaiName, Model: gpt35turbo, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.New()},
+		{AIName: geminiName, Model: gemini1pro, APIKey: geminiKey, BaseURL: geminiBaseURL, Generator: gemini.New()},
 	}
 
 	// Register the models
-	aimgr.RegisterGenerators(models...)
-
-	thread := ai.ThreadData{
-		AIName: openaiName,
-		Model:  gpt4,
-	}
-	// Create a thread to converse with
-	if err := aimgr.NewThread(thread); err != nil {
+	err := aimgr.RegisterGenerators(models...)
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	// Create a channel to receive data
-	output := make(chan string)
-
-	// Start chatting
-	go aimgr.CurrentThread().Generate(output, "Write a story about a superhero cat named Bitty")
-
-	for {
-		msg := <-output
-		switch msg {
-		case ai.ErrorStart:
-			fmt.Println("Received an error!")
-			continue
-		case ai.ResponseStart:
-			continue
-
-		case ai.ErrorComplete:
-			os.Exit(1)
-		case ai.ResponseComplete:
-			os.Exit(0)
-		}
-		fmt.Println(msg)
+	threadData := ai.ThreadData{
+		AIName: openaiName,
+		Model:  gpt4,
 	}
+	// Create a thread to converse with
+	thread, err := aimgr.NewThread(threadData)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	qry := "Write a story about a superhero cat named Bitty"
+
+	resp, err := thread.Converse(qry)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("AI said: %s\n", resp.Message.Text)
+	fmt.Printf("Response time: %v\n", resp.Elapsed)
+	fmt.Printf("Token Cose: %v\n", resp.Usage.TotalTokens)
 }
 ```

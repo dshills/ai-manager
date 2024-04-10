@@ -1,30 +1,16 @@
 package ai
 
-/**
-Generator is a function specific to a AI Model for interacting with a text generator
-**/
+import "time"
 
-// Conversation is a running dialog with an LLM
-type Conversation []Message
-
-// Meta is used for storing and passing other pieces of data
-type Meta struct {
-	Key   string
-	Value string
+// GeneratorResponse is the response data from a Generator call
+type GeneratorResponse struct {
+	Elapsed time.Duration
+	Message Message
+	Usage   Usage
+	Meta    []Meta
 }
 
-// Message represents a single interaction from an LLM
-// Each LLM has it's own format for interactions but
-// each one has some concept of role and text
-type Message struct {
-	Role string
-	Text string
+// Generator is an interface for interacting with an AI
+type Generator interface {
+	Generate(model, apikey, baseURL string, conversation Conversation, meta ...Meta) (*GeneratorResponse, error)
 }
-
-type Usage struct {
-	CompletionTokens int64
-	PromptTokens     int64
-	TotalTokens      int64
-}
-
-type Generator func(model, apikey, baseURL string, conversation Conversation, meta ...Meta) (Message, Usage, error)

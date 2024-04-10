@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/dshills/ai-manager/ai"
 )
@@ -18,28 +19,36 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
+type Generator struct{}
+
+func New() ai.Generator {
+	return &Generator{}
+}
+
+func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
 	aireq := Request{Model: model}
 	aireq.fillMsgs(conversation)
 
 	body, err := json.Marshal(&aireq)
 	if err != nil {
-		err = fmt.Errorf("anthropic.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("anthropic.Generator: %w", err)
 	}
 
+	response := ai.GeneratorResponse{}
+
+	start := time.Now()
 	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		err = fmt.Errorf("anthropic.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("anthropic.Generator: %w", err)
 	}
+	response.Elapsed = time.Since(start)
+	response.Usage.PromptTokens = int64(resp.Usage.InputTokens)
+	response.Usage.CompletionTokens = int64(resp.Usage.OutputTokens)
+	response.Usage.TotalTokens = response.Usage.PromptTokens + response.Usage.CompletionTokens
+	response.Message.Role = roleAssistant
+	response.Message.Text = resp.Content[0].Text
 
-	usage.PromptTokens = int64(resp.Usage.InputTokens)
-	usage.CompletionTokens = int64(resp.Usage.OutputTokens)
-	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
-	msg.Role = roleAssistant
-	msg.Text = resp.Content[0].Text
-	return msg, usage, nil
+	return &response, nil
 }
 
 func completion(apiKey, baseURL string, reader io.Reader) (*Response, error) {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dshills/ai-manager/ai"
 )
@@ -17,7 +18,13 @@ const (
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
+type Generator struct{}
+
+func New() ai.Generator {
+	return &Generator{}
+}
+
+func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}
@@ -26,24 +33,27 @@ func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ..
 	req := Request{Contents: conlist}
 	body, err := json.Marshal(&req)
 	if err != nil {
-		err = fmt.Errorf("gemini.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("gemini.Generator: %w", err)
 	}
 
+	response := ai.GeneratorResponse{}
+
+	start := time.Now()
 	resp, err := completion(model, apiKey, baseURL, bytes.NewReader(body))
 	if err != nil {
-		err = fmt.Errorf("gemini.Generator: %w", err)
-		return
+		return nil, fmt.Errorf("gemini.Generator: %w", err)
 	}
+
+	response.Elapsed = time.Since(start)
 
 	for _, can := range resp.Candidates {
-		usage.TotalTokens += int64(can.TokenCount)
+		response.Usage.TotalTokens += int64(can.TokenCount)
 	}
 
-	msg.Role = resp.Candidates[0].Content.Role
-	msg.Text = resp.Candidates[0].Content.Parts[0].Text
+	response.Message.Role = resp.Candidates[0].Content.Role
+	response.Message.Text = resp.Candidates[0].Content.Parts[0].Text
 
-	return msg, usage, nil
+	return &response, nil
 }
 
 func completion(model, apiKey, baseURL string, reader io.Reader) (*Response, error) {
