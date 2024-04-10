@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/dshills/ai-manager/ai"
@@ -25,8 +26,23 @@ func New() ai.Generator {
 	return &Generator{}
 }
 
-func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
-	aireq := Request{Model: model}
+const tokMax = "max_tokens"
+
+func getMaxTokens(meta []ai.Meta) int {
+	for _, m := range meta {
+		if m.Key == tokMax {
+			max, err := strconv.Atoi(m.Value)
+			if err != nil {
+				max = 1024
+			}
+			return max
+		}
+	}
+	return 1024
+}
+
+func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, meta ...ai.Meta) (*ai.GeneratorResponse, error) {
+	aireq := Request{Model: model, MaxTokens: getMaxTokens(meta)}
 	aireq.fillMsgs(conversation)
 
 	body, err := json.Marshal(&aireq)
