@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/ai"
 )
 
 const ep = "/messages"
@@ -18,7 +18,7 @@ const (
 	roleUser      = "user"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
+func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
 	aireq := Request{Model: model}
 	aireq.fillMsgs(conversation)
 

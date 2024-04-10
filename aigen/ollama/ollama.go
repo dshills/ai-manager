@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/ai"
 )
 
 const chatEP = "api/chat"
 
-func Generator(model, _, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
+func Generator(model, _, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
 	chatReq := ChatRequest{
 		Model: model,
 	}

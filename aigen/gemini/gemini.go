@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/ai"
 )
 
 const AIName = "gemini"
@@ -17,7 +17,7 @@ const (
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-func Generator(model, apiKey, baseURL string, conversation aigen.Conversation, _ ...aigen.Meta) (msg aigen.Message, usage aigen.Usage, err error) {
+func Generator(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (msg ai.Message, usage ai.Usage, err error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}

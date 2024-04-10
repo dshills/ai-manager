@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/dshills/ai-manager/aigen"
 )
 
 type Model struct {
@@ -13,7 +11,7 @@ type Model struct {
 	Model     string
 	APIKey    string
 	BaseURL   string
-	Generator aigen.Generator
+	Generator Generator
 }
 
 func (m Model) Validate() error {
@@ -41,8 +39,8 @@ type ThreadData struct {
 	AIName           string
 	Model            string
 	CreatedAt        time.Time
-	Conversation     aigen.Conversation
-	MetaData         []aigen.Meta
+	Conversation     Conversation
+	MetaData         []Meta
 	CompletionTokens int64
 	PromptTokens     int64
 	TotalTokens      int64

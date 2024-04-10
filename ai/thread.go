@@ -1,9 +1,5 @@
 package ai
 
-import (
-	"github.com/dshills/ai-manager/aigen"
-)
-
 const (
 	ResponseStart    = "--- RESPONSE START ---"
 	ResponseComplete = "--- RESPONSE COMPLETE ---"
@@ -13,7 +9,7 @@ const (
 
 type Thread interface {
 	ID() string
-	Conversation() aigen.Conversation
+	Conversation() Conversation
 	Info() ThreadData
 	Generate(out chan<- string, query string)
 	Converse(query string) (string, error)
@@ -21,7 +17,7 @@ type Thread interface {
 
 type _thread struct {
 	info      ThreadData
-	generator aigen.Generator
+	generator Generator
 	apiKey    string
 	mgr       *Manager
 	baseURL   string
@@ -31,7 +27,7 @@ func (t *_thread) ID() string {
 	return t.info.ID
 }
 
-func (t *_thread) Conversation() aigen.Conversation {
+func (t *_thread) Conversation() Conversation {
 	return t.info.Conversation
 }
 
@@ -39,18 +35,18 @@ func (t *_thread) Info() ThreadData {
 	return t.info
 }
 
-func (t *_thread) updateConv(msg aigen.Message) {
+func (t *_thread) updateConv(msg Message) {
 	t.info.Conversation = append(t.info.Conversation, msg)
 }
 
-func (t *_thread) updateUsage(usage aigen.Usage) {
+func (t *_thread) updateUsage(usage Usage) {
 	t.info.PromptTokens += usage.PromptTokens
 	t.info.CompletionTokens += usage.CompletionTokens
 	t.info.TotalTokens += usage.TotalTokens
 }
 
 func (t *_thread) Generate(out chan<- string, query string) {
-	msg := aigen.Message{Role: "user", Text: query}
+	msg := Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
 	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
@@ -68,7 +64,7 @@ func (t *_thread) Generate(out chan<- string, query string) {
 }
 
 func (t *_thread) Converse(query string) (string, error) {
-	msg := aigen.Message{Role: "user", Text: query}
+	msg := Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
 	resp, usage, err := t.generator(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)

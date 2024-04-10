@@ -1,7 +1,7 @@
 package anthropic
 
 import (
-	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/ai"
 )
 
 type Request struct {
@@ -10,7 +10,7 @@ type Request struct {
 	Messages  []MessageFrag `json:"messages,omitempty"`
 }
 
-func (r *Request) fillMsgs(conversation aigen.Conversation) {
+func (r *Request) fillMsgs(conversation ai.Conversation) {
 	for _, conv := range conversation {
 		r.Messages = append(r.Messages, MessageFrag{Role: conv.Role, Content: conv.Text})
 	}

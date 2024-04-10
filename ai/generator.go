@@ -1,4 +1,4 @@
-package aigen
+package ai
 
 /**
 Generator is a function specific to a AI Model for interacting with a text generator

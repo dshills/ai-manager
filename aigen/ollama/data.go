@@ -3,7 +3,7 @@ package ollama
 import (
 	"time"
 
-	"github.com/dshills/ai-manager/aigen"
+	"github.com/dshills/ai-manager/ai"
 )
 
 const AIName = "ollama"
@@ -19,7 +19,7 @@ type ChatRequest struct {
 	Stream   bool          `json:"stream"`
 }
 
-func (cr *ChatRequest) convConv(conversation aigen.Conversation) {
+func (cr *ChatRequest) convConv(conversation ai.Conversation) {
 	for _, c := range conversation {
 		cr.Messages = append(cr.Messages, MessageFrag{Role: c.Role, Content: c.Text})
 	}
