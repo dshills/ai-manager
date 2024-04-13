@@ -2,6 +2,8 @@
 
 Interact with all the modern AIs
 
+**Important Note:** The API/interface is changing rapidly as I add new functionality and capabilities. I am also refactoring out redundant or confusing structures. If you are using the package and this is causing issues let me know and I will take a more careful approach to refactoring.
+
 ## Supported Models
 
 - Anthropic: claude-3-haiku-20240307
@@ -30,46 +32,37 @@ import (
 	"os"
 
 	"github.com/dshills/ai-manager/ai"
-	"github.com/dshills/ai-manager/aigen/gemini"
 	"github.com/dshills/ai-manager/aigen/openai"
 )
 
 const (
-	openaiName    = "OpenAI"
-	openaiKey     = "<YOUR OpenAI API Key>"
-	gpt4          = "gpt-4"
-	gpt35turbo    = "gpt-3.5-turbo"
-	openaiBaseURL = "https://api.openai.com/v1"
+	openaiKey       = "<YOUR OpenAI API Key>"
+	modelGPT4       = "gpt-4"
+	modelGPT35Turbo = "gpt-3.5-turbo"
+	openaiBaseURL   = "https://api.openai.com/v1"
 )
 const (
-	geminiName    = "Gemini"
-	geminiKey     = "<YOUR Gemini API Key>"
-	gemini1pro    = "gemini-1.0-pro"
-	geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta"
+	geminiKey       = "<YOUR Gemini API Key>"
+	modelGemini1Pro = "gemini-1.0-pro"
+	geminiBaseURL   = "https://generativelanguage.googleapis.com/v1beta"
 )
 
 func main() {
 	// Create the manager
 	aimgr := ai.New()
 
-	// Models we want to use
-	models := []ai.Model{
-		{AIName: openaiName, Model: gpt4, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.New()},
-		{AIName: openaiName, Model: gpt35turbo, APIKey: openaiKey, BaseURL: openaiBaseURL, Generator: openai.New()},
-		{AIName: geminiName, Model: gemini1pro, APIKey: geminiKey, BaseURL: geminiBaseURL, Generator: gemini.New()},
-	}
+	genGPT4 := openai.New(modelGPT4, openaiKey, openaiBaseURL)
+	genGPT35Turbo := openai.New(modelGPT35Turbo, openaiKey, openaiBaseURL)
+	genGemini1Pro := openai.New(modelGemini1Pro, geminiKey, geminiBaseURL)
 
 	// Register the models
-	err := aimgr.RegisterGenerators(models...)
+	err := aimgr.RegisterGenerators(genGPT35Turbo, genGPT4, genGemini1Pro)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	threadData := ai.ThreadData{
-		AIName: openaiName,
-		Model:  gpt4,
-	}
+	threadData := ai.NewThreadData(modelGPT35Turbo)
 	// Create a thread to converse with
 	thread, err := aimgr.NewThread(threadData)
 	if err != nil {

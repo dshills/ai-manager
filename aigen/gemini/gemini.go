@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dshills/ai-manager/ai"
+	"github.com/dshills/ai-manager/aitool"
 )
 
 const AIName = "gemini"
@@ -18,13 +19,22 @@ const (
 	geminiEP = "/models/%%MODEL%%:generateContent?key=%%APIKEY%%"
 )
 
-type Generator struct{}
-
-func New() ai.Generator {
-	return &Generator{}
+type Generator struct {
+	model   string
+	baseURL string
+	apiKey  string
+	tools   map[string]aitool.Tool
 }
 
-func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
+func New(model, apiKey, baseURL string) ai.Generator {
+	return &Generator{model: model, apiKey: apiKey, baseURL: baseURL, tools: make(map[string]aitool.Tool)}
+}
+
+func (g *Generator) Model() string {
+	return g.model
+}
+
+func (g *Generator) Generate(conversation ai.Conversation, _ []ai.Meta, _ []aitool.Tool) (*ai.GeneratorResponse, error) {
 	conlist := []Content{}
 	for _, m := range conversation {
 		con := Content{Role: m.Role, Parts: []Part{{Text: m.Text}}}
@@ -39,7 +49,7 @@ func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conv
 	response := ai.GeneratorResponse{}
 
 	start := time.Now()
-	resp, err := completion(model, apiKey, baseURL, bytes.NewReader(body))
+	resp, err := completion(g.model, g.apiKey, g.baseURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("gemini.Generator: %w", err)
 	}

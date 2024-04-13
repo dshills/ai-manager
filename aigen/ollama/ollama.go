@@ -7,22 +7,51 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/dshills/ai-manager/ai"
+	"github.com/dshills/ai-manager/aitool"
 )
 
 const chatEP = "api/chat"
+const keyTemperature = "temperature"
 
-type Generator struct{}
-
-func New() ai.Generator {
-	return &Generator{}
+type Generator struct {
+	model   string
+	baseURL string
+	tools   map[string]aitool.Tool
 }
 
-func (g *Generator) Generate(model, _, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
+func New(model, baseURL string) ai.Generator {
+	return &Generator{model: model, baseURL: baseURL, tools: make(map[string]aitool.Tool)}
+}
+
+func (g *Generator) Model() string {
+	return g.model
+}
+
+// getTemp 0 - 1 float 64
+func (g *Generator) getTemp(meta []ai.Meta) float64 {
+	for _, m := range meta {
+		if m.Key == keyTemperature {
+			val, err := strconv.ParseFloat(m.Value, 64)
+			if err != nil {
+				return -1
+			}
+			return val
+		}
+	}
+	return -1
+}
+
+func (g *Generator) Generate(conversation ai.Conversation, meta []ai.Meta, _ []aitool.Tool) (*ai.GeneratorResponse, error) {
 	chatReq := ChatRequest{
-		Model: model,
+		Model: g.model,
+	}
+	temp := g.getTemp(meta)
+	if temp > -1 {
+		chatReq.Options.Temperature = temp
 	}
 	chatReq.convConv(conversation)
 
@@ -34,7 +63,7 @@ func (g *Generator) Generate(model, _, baseURL string, conversation ai.Conversat
 	response := ai.GeneratorResponse{}
 
 	start := time.Now()
-	resp, err := completion(baseURL, bytes.NewReader(byts))
+	resp, err := completion(g.baseURL, bytes.NewReader(byts))
 	if err != nil {
 		return nil, fmt.Errorf("ollama.Generator: %w", err)
 	}

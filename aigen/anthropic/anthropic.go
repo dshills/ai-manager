@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dshills/ai-manager/ai"
+	"github.com/dshills/ai-manager/aitool"
 )
 
 const ep = "/messages"
@@ -19,14 +20,23 @@ const (
 	roleAssistant = "assistant"
 	roleUser      = "user"
 )
+const tokMax = "max_tokens"
 
-type Generator struct{}
-
-func New() ai.Generator {
-	return &Generator{}
+type Generator struct {
+	model   string
+	baseURL string
+	apiKey  string
+	tools   map[string]aitool.Tool
 }
 
-const tokMax = "max_tokens"
+func New(model, apiKey, baseURL string) ai.Generator {
+	return &Generator{model: model, apiKey: apiKey, baseURL: baseURL, tools: make(map[string]aitool.Tool)}
+
+}
+
+func (g *Generator) Model() string {
+	return g.model
+}
 
 func getMaxTokens(meta []ai.Meta) int {
 	for _, m := range meta {
@@ -41,8 +51,8 @@ func getMaxTokens(meta []ai.Meta) int {
 	return 1024
 }
 
-func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, meta ...ai.Meta) (*ai.GeneratorResponse, error) {
-	aireq := Request{Model: model, MaxTokens: getMaxTokens(meta)}
+func (g *Generator) Generate(conversation ai.Conversation, meta []ai.Meta, _ []aitool.Tool) (*ai.GeneratorResponse, error) {
+	aireq := Request{Model: g.model, MaxTokens: getMaxTokens(meta)}
 	aireq.fillMsgs(conversation)
 
 	body, err := json.Marshal(&aireq)
@@ -53,7 +63,7 @@ func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conv
 	response := ai.GeneratorResponse{}
 
 	start := time.Now()
-	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
+	resp, err := completion(g.apiKey, g.baseURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("anthropic.Generator: %w", err)
 	}

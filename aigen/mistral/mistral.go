@@ -7,33 +7,79 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/dshills/ai-manager/ai"
+	"github.com/dshills/ai-manager/aitool"
 )
 
 const chatEP = "/chat/completions"
 
 const AIName = "mistral"
 
-type Generator struct{}
+const (
+	keyTemperature = "temperature"
+	keyMaxTokens   = "max_tokens"
+)
 
-func New() ai.Generator {
-	return &Generator{}
+type Generator struct {
+	model   string
+	baseURL string
+	apiKey  string
+	tools   map[string]aitool.Tool
 }
 
-func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conversation, _ ...ai.Meta) (*ai.GeneratorResponse, error) {
+func New(model, apiKey, baseURL string) ai.Generator {
+	return &Generator{model: model, apiKey: apiKey, baseURL: baseURL, tools: make(map[string]aitool.Tool)}
+}
+
+func (g *Generator) Model() string {
+	return g.model
+}
+
+func (g *Generator) getTemperature(meta []ai.Meta) float64 {
+	for _, m := range meta {
+		if m.Key == keyTemperature {
+			temp, err := strconv.ParseFloat(m.Value, 64)
+			if err != nil {
+				return 0.2
+			}
+			return temp
+		}
+	}
+	return 0.2
+}
+
+func (g *Generator) getMaxTokens(meta []ai.Meta) int {
+	for _, m := range meta {
+		if m.Key == keyTemperature {
+			maxT, err := strconv.Atoi(m.Value)
+			if err != nil {
+				return -1
+			}
+			return maxT
+		}
+	}
+	return -1
+}
+
+func (g *Generator) Generate(conversation ai.Conversation, meta []ai.Meta, _ []aitool.Tool) (*ai.GeneratorResponse, error) {
 	messages := []Message{}
 	for _, m := range conversation {
 		msg := Message{Role: m.Role, Content: m.Text}
 		messages = append(messages, msg)
 	}
 	req := Request{
-		Model:       model,
+		Model:       g.model,
 		Messages:    messages,
 		Stream:      false,
 		SafePrompt:  false,
-		Temperature: 0.2,
+		Temperature: g.getTemperature(meta),
+	}
+	maxTok := g.getMaxTokens(meta)
+	if maxTok > 0 {
+		req.MaxTokens = maxTok
 	}
 	body, err := json.Marshal(&req)
 	if err != nil {
@@ -43,7 +89,7 @@ func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conv
 	response := ai.GeneratorResponse{}
 
 	start := time.Now()
-	resp, err := completion(apiKey, baseURL, bytes.NewReader(body))
+	resp, err := completion(g.apiKey, g.baseURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("mistral.Generator: %w", err)
 	}
@@ -54,6 +100,7 @@ func (g *Generator) Generate(model, apiKey, baseURL string, conversation ai.Conv
 	response.Usage.TotalTokens = int64(resp.Usage.TotalTokens)
 	response.Message.Role = resp.Choices[0].Message.Role
 	response.Message.Text = resp.Choices[0].Message.Content
+	response.FinishReason = resp.Choices[0].FinishReason
 
 	return &response, nil
 }

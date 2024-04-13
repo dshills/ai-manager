@@ -11,18 +11,18 @@ import (
 type Manager struct {
 	threads       []Thread
 	currentThread Thread
-	models        map[string]Model
+	generators    map[string]Generator
 	m             sync.RWMutex
 	modelNames    []string
 }
 
 func New() *Manager {
-	aigen := Manager{models: make(map[string]Model)}
+	aigen := Manager{generators: make(map[string]Generator)}
 	return &aigen
 }
 
 func (ai *Manager) NewThread(info ThreadData) (Thread, error) {
-	gen, err := ai.generatorInfo(info.AIName, info.Model)
+	gen, err := ai.generatorInfo(info.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -76,19 +76,16 @@ func (ai *Manager) Threads() []ThreadData {
 	return convs
 }
 
-func (ai *Manager) RegisterGenerators(models ...Model) error {
+func (ai *Manager) RegisterGenerators(generators ...Generator) error {
 	ai.m.Lock()
 	defer ai.m.Unlock()
 
-	for _, mod := range models {
-		if err := mod.Validate(); err != nil {
-			return err
-		}
-		key := fmt.Sprintf("%v:%v", strings.ToLower(mod.AIName), strings.ToLower(mod.Model))
-		ai.models[key] = mod
+	for _, gen := range generators {
+		model := strings.ToLower(gen.Model())
+		ai.generators[model] = gen
 	}
 	names := []string{}
-	for key := range ai.models {
+	for key := range ai.generators {
 		names = append(names, key)
 	}
 	ai.modelNames = names
@@ -99,14 +96,14 @@ func (ai *Manager) Models() []string {
 	return ai.modelNames
 }
 
-func (ai *Manager) generatorInfo(aiName, model string) (*Model, error) {
+func (ai *Manager) generatorInfo(model string) (Generator, error) {
 	ai.m.RLock()
 	defer ai.m.RUnlock()
 
-	key := fmt.Sprintf("%v:%v", strings.ToLower(aiName), strings.ToLower(model))
-	mod, ok := ai.models[key]
+	model = strings.ToLower(model)
+	gen, ok := ai.generators[model]
 	if !ok {
-		return nil, fmt.Errorf("%v %v Generator not found", aiName, model)
+		return nil, fmt.Errorf("%v Generator not found", model)
 	}
-	return &mod, nil
+	return gen, nil
 }

@@ -1,19 +1,18 @@
 package openai
 
+import "github.com/dshills/ai-manager/aitool"
+
 /* -- Request -- */
 type CreateRequest struct {
-	Model       string        `json:"model,omitempty"`
-	Messages    []MessageFrag `json:"messages,omitempty"`
-	Stream      bool          `json:"stream,omitempty"`
-	Logprobs    bool          `json:"logprobs,omitempty"`
-	TopLogprobs int           `json:"top_logprobs,omitempty"`
-	Tools       []ToolFrag    `json:"tools,omitempty"`
-	ToolChoice  string        `json:"tool_choice,omitempty"`
-}
-
-type ToolFrag struct {
-	Type     string       `json:"type,omitempty"`
-	Function FunctionFrag `json:"function,omitempty"`
+	Model       string            `json:"model,omitempty"`
+	Messages    []MessageCallFrag `json:"messages,omitempty"`
+	Stream      bool              `json:"stream,omitempty"`
+	Logprobs    bool              `json:"logprobs,omitempty"`
+	TopLogprobs int               `json:"top_logprobs,omitempty"`
+	Tools       []aitool.Tool     `json:"tools,omitempty"`
+	ToolChoice  string            `json:"tool_choice,omitempty"`
+	Temperature int               `json:"temperature"`
+	MaxTokens   *int              `json:"max_tokens,omitempty"`
 }
 
 type FunctionFrag struct {
@@ -43,6 +42,11 @@ type LocationFrag struct {
 	Description string `json:"description,omitempty"`
 }
 
+type MessageCallFrag struct {
+	Role    string `json:"role,omitempty"`
+	Content string `json:"content,omitempty"`
+}
+
 /* -- Response -- */
 type ChatResp struct {
 	ID                string       `json:"id,omitempty"`
@@ -69,8 +73,18 @@ type UsageFrag struct {
 }
 
 type MessageFrag struct {
-	Role    string `json:"role,omitempty"`
-	Content string `json:"content,omitempty"`
+	Role      string     `json:"role,omitempty"`
+	Content   string     `json:"content,omitempty"`
+	ToolCalls []ToolFrag `json:"tool_calls,omitempty"`
+}
+
+type ToolFrag struct {
+	ID       string `json:"id,omitempty"`
+	Type     string `json:"type,omitempty"`
+	Function struct {
+		Name      string `json:"name,omitempty"`
+		Arguments string `json:"arguments,omitempty"`
+	} `json:"function,omitempty"`
 }
 
 type LogprobsFrag struct {

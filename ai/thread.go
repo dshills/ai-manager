@@ -1,17 +1,29 @@
 package ai
 
-import "time"
+import (
+	"time"
+
+	"github.com/dshills/ai-manager/aitool"
+	"github.com/google/uuid"
+)
 
 type ThreadData struct {
 	ID               string
-	AIName           string
 	Model            string
 	CreatedAt        time.Time
 	Conversation     Conversation
-	MetaData         []Meta
 	CompletionTokens int64
 	PromptTokens     int64
 	TotalTokens      int64
+	Tools            []aitool.Tool
+	MetaData         []Meta
+}
+
+func NewThreadData(model string) ThreadData {
+	return ThreadData{
+		ID:    uuid.New().String(),
+		Model: model,
+	}
 }
 
 type Thread interface {
@@ -22,11 +34,9 @@ type Thread interface {
 }
 
 type _thread struct {
-	info    ThreadData
-	gen     Generator
-	apiKey  string
-	mgr     *Manager
-	baseURL string
+	info ThreadData
+	gen  Generator
+	mgr  *Manager
 }
 
 func (t *_thread) ID() string {
@@ -55,7 +65,7 @@ func (t *_thread) Converse(query string) (*GeneratorResponse, error) {
 	msg := Message{Role: "user", Text: query}
 	t.updateConv(msg)
 
-	resp, err := t.gen.Generate(t.info.Model, t.apiKey, t.baseURL, t.info.Conversation, t.info.MetaData...)
+	resp, err := t.gen.Generate(t.info.Conversation, t.info.MetaData, t.info.Tools)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +74,6 @@ func (t *_thread) Converse(query string) (*GeneratorResponse, error) {
 	return resp, nil
 }
 
-func newThread(mgr *Manager, info ThreadData, mod *Model) Thread {
-	return &_thread{mgr: mgr, info: info, gen: mod.Generator, apiKey: mod.APIKey, baseURL: mod.BaseURL}
+func newThread(mgr *Manager, info ThreadData, gen Generator) Thread {
+	return &_thread{mgr: mgr, info: info, gen: gen}
 }
